@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<title>Fidget Zone</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: #0a0a0f;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+    touch-action: none;
+    width: 100vw;
+    /* Use dvh (dynamic viewport height) so mobile browser chrome doesn't cut off content */
+    height: 100dvh;
+    height: 100vh; /* fallback */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  @supports (height: 100dvh) { body { height: 100dvh; } }
+
+  /* ── Background aurora ── */
+  .aurora {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+  }
+  .aurora-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.18;
+    animation: aurora-drift 12s ease-in-out infinite alternate;
+  }
+  .aurora-blob:nth-child(1) { width: 500px; height: 500px; background: #7c3aed; top: -100px; left: -100px; animation-duration: 11s; }
+  .aurora-blob:nth-child(2) { width: 400px; height: 400px; background: #0ea5e9; bottom: -80px; right: -80px; animation-duration: 14s; animation-delay: -3s; }
+  .aurora-blob:nth-child(3) { width: 350px; height: 350px; background: #ec4899; top: 40%; left: 50%; transform: translate(-50%,-50%); animation-duration: 9s; animation-delay: -6s; }
+  @keyframes aurora-drift {
+    0% { transform: translate(0,0) scale(1); }
+    100% { transform: translate(40px, 30px) scale(1.15); }
+  }
+
+  /* ── Layout ── */
+  .ui { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+
+  /* ── Score display ── */
+  .score-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .score-label {
+    font-size: 13px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+  .score {
+    font-size: clamp(52px, 10vw, 80px);
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    transition: transform 0.06s ease;
+    text-shadow: 0 0 40px rgba(139,92,246,0.6);
+    font-variant-numeric: tabular-nums;
+  }
+  .score.pop { transform: scale(1.18); }
+  .multiplier {
+    font-size: 15px;
+    color: #f59e0b;
+    font-weight: 700;
+    letter-spacing: 2px;
+    min-height: 20px;
+    transition: opacity 0.3s;
+  }
+
+  /* ── Orb clicker ── */
+  .orb-ring {
+    position: relative;
+    width: clamp(160px, 28vmin, 220px);
+    height: clamp(160px, 28vmin, 220px);
+    cursor: pointer;
+    touch-action: none;
+  }
+  .orb-ring::before, .orb-ring::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    animation: ring-spin 3s linear infinite;
+  }
+  .orb-ring::before { border-top-color: #7c3aed; border-right-color: #7c3aed; animation-duration: 3s; }
+  .orb-ring::after  { border-bottom-color: #0ea5e9; border-left-color: #0ea5e9; animation-duration: 4.5s; animation-direction: reverse; inset: -14px; }
+  @keyframes ring-spin { to { transform: rotate(360deg); } }
+
+  .orb {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #a78bfa, #4c1d95 60%, #1e1b4b);
+    box-shadow:
+      0 0 40px rgba(124,58,237,0.5),
+      0 0 80px rgba(124,58,237,0.2),
+      inset 0 0 30px rgba(0,0,0,0.4);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    animation: orb-breathe 3s ease-in-out infinite;
+  }
+  @keyframes orb-breathe {
+    0%, 100% { box-shadow: 0 0 40px rgba(124,58,237,0.5), 0 0 80px rgba(124,58,237,0.2), inset 0 0 30px rgba(0,0,0,0.4); }
+    50%       { box-shadow: 0 0 60px rgba(124,58,237,0.8), 0 0 120px rgba(124,58,237,0.4), inset 0 0 30px rgba(0,0,0,0.4); }
+  }
+  .orb-ring:active .orb { transform: scale(0.9); box-shadow: 0 0 20px rgba(124,58,237,0.3), inset 0 0 30px rgba(0,0,0,0.5); }
+
+  /* ── Ripple on click ── */
+  .ripple {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    border: 2px solid rgba(167,139,250,0.7);
+    animation: ripple-out 0.7s ease-out forwards;
+    z-index: 99;
+    transform: translate(-50%,-50%);
+  }
+  @keyframes ripple-out {
+    0%   { width: 0; height: 0; opacity: 1; }
+    100% { width: 200px; height: 200px; opacity: 0; }
+  }
+
+  /* ── Floating +N text ── */
+  .float-num {
+    position: fixed;
+    pointer-events: none;
+    font-weight: 900;
+    color: #a78bfa;
+    font-size: 28px;
+    z-index: 100;
+    text-shadow: 0 0 10px rgba(167,139,250,0.8);
+    animation: float-up 1s ease-out forwards;
+    transform: translateX(-50%);
+  }
+  @keyframes float-up {
+    0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-80px); }
+  }
+
+  /* ── Particle burst ── */
+  .particle {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 98;
+    animation: particle-fly var(--dur) ease-out forwards;
+  }
+  @keyframes particle-fly {
+    0%   { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+  }
+
+  /* ── Bottom toy strip ── */
+  .toy-strip {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  /* ── Bubble buttons ── */
+  .bubble {
+    width: clamp(48px, 13vmin, 64px); height: clamp(48px, 13vmin, 64px);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    touch-action: none;
+    position: relative;
+    overflow: visible;
+    transition: transform 0.08s ease;
+    animation: bubble-float 4s ease-in-out infinite;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .bubble:nth-child(1) { background: radial-gradient(circle at 35% 35%, #f472b6, #be185d); animation-delay: 0s; }
+  .bubble:nth-child(2) { background: radial-gradient(circle at 35% 35%, #34d399, #065f46); animation-delay: -1.3s; }
+  .bubble:nth-child(3) { background: radial-gradient(circle at 35% 35%, #fbbf24, #92400e); animation-delay: -2.6s; }
+  .bubble:nth-child(4) { background: radial-gradient(circle at 35% 35%, #38bdf8, #0c4a6e); animation-delay: -0.8s; }
+  @keyframes bubble-float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%       { transform: translateY(-8px) rotate(3deg); }
+  }
+  .bubble:active { transform: scale(0.78) !important; }
+  .bubble.pop-anim { animation: bubble-pop 0.35s ease-out forwards !important; }
+  @keyframes bubble-pop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.3); }
+    70%  { transform: scale(0.85); }
+    100% { transform: scale(1); }
+  }
+
+  /* ── Spinner ── */
+  .spinner-wrap {
+    position: relative;
+    width: clamp(48px, 13vmin, 64px);
+    height: clamp(48px, 13vmin, 64px);
+    cursor: grab;
+    touch-action: none;
+  }
+  .spinner-wrap:active { cursor: grabbing; }
+  .spinner {
+    width: 100%;
+    height: 100%;
+    animation: none;
+  }
+  .spinner-blade {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-radius: 50% 50% 50% 0;
+    top: 50%; left: 50%;
+    transform-origin: -4px -4px;
+  }
+  .spinner-blade:nth-child(1) { background: #7c3aed; transform: rotate(0deg)   translate(-50%,-50%); }
+  .spinner-blade:nth-child(2) { background: #0ea5e9; transform: rotate(120deg) translate(-50%,-50%); }
+  .spinner-blade:nth-child(3) { background: #ec4899; transform: rotate(240deg) translate(-50%,-50%); }
+  .spinner-center {
+    position: absolute;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    box-shadow: 0 0 10px rgba(255,255,255,0.6);
+  }
+
+  /* ── Progress bar ── */
+  .progress-wrap {
+    width: clamp(200px, 50vw, 340px);
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #7c3aed, #ec4899, #0ea5e9);
+    background-size: 200% 100%;
+    animation: bar-shimmer 2s linear infinite;
+    transition: width 0.2s ease;
+    width: 0%;
+  }
+  @keyframes bar-shimmer {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  /* ── Level badge ── */
+  .level-badge {
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: #6b7280;
+    text-transform: uppercase;
+  }
+  .level-badge span {
+    color: #a78bfa;
+    font-weight: 700;
+  }
+
+  /* ── Screen flash on level up ── */
+  .flash-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 200;
+    background: rgba(255,255,255,0);
+    transition: background 0.05s;
+  }
+  .flash-overlay.flash { background: rgba(255,255,255,0.18); }
+</style>
+</head>
+<body>
+
+<div class="aurora">
+  <div class="aurora-blob"></div>
+  <div class="aurora-blob"></div>
+  <div class="aurora-blob"></div>
+</div>
+
+<div class="flash-overlay" id="flashOverlay"></div>
+
+<div class="ui">
+
+  <div class="score-wrap">
+    <div class="score-label">Points</div>
+    <div class="score" id="score">0</div>
+    <div class="multiplier" id="multiplier"></div>
+  </div>
+
+  <div class="orb-ring" id="orbRing" title="Click me!">
+    <div class="orb" id="orb">✦</div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <div class="level-badge">Level <span id="levelNum">1</span></div>
+
+  <div class="toy-strip">
+    <button class="bubble" id="b0" title="Pop!"></button>
+    <div class="spinner-wrap" id="spinnerWrap" title="Spin!">
+      <div class="spinner" id="spinner">
+        <div class="spinner-blade"></div>
+        <div class="spinner-blade"></div>
+        <div class="spinner-blade"></div>
+        <div class="spinner-center"></div>
+      </div>
+    </div>
+    <button class="bubble" id="b1" title="Pop!"></button>
+    <button class="bubble" id="b2" title="Pop!"></button>
+    <button class="bubble" id="b3" title="Pop!"></button>
+  </div>
+
+</div>
+
+<script>
+/* ─── State ─────────────────────────────────────────────── */
+let score = 0;
+let combo = 1;
+let comboTimer = null;
+let spinVelocity = 0;
+let spinAngle   = 0;
+let spinAnimId  = null;
+let lastSpinTime = 0;
+let lastSpinAngle = 0;
+let isDraggingSpinner = false;
+
+const LEVEL_THRESHOLDS = [0,50,150,350,700,1200,2000,3200,5000,8000,13000,21000,Infinity];
+const LEVEL_NAMES = ['Rookie','Clicker','Tapper','Spinner','Popper','Addict',
+                     'Machine','Wizard','Master','Legend','Deity','Cosmic'];
+
+/* ─── DOM refs ───────────────────────────────────────────── */
+const scoreEl     = document.getElementById('score');
+const multiplierEl= document.getElementById('multiplier');
+const orbRing     = document.getElementById('orbRing');
+const orb         = document.getElementById('orb');
+const progressBar = document.getElementById('progressBar');
+const levelNumEl  = document.getElementById('levelNum');
+const flashOverlay= document.getElementById('flashOverlay');
+const spinnerEl   = document.getElementById('spinner');
+const spinnerWrap = document.getElementById('spinnerWrap');
+
+/* ─── Audio context ──────────────────────────────────────── */
+let audioCtx = null;
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playClick(freq = 520, type = 'sine', vol = 0.12) {
+  try {
+    const ctx = getCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    osc.start(); osc.stop(ctx.currentTime + 0.15);
+  } catch(_) {}
+}
+function playLevelUp() {
+  [523, 659, 784, 1047].forEach((f, i) => {
+    setTimeout(() => playClick(f, 'triangle', 0.15), i * 80);
+  });
+}
+
+/* ─── Score & Level ──────────────────────────────────────── */
+function addScore(amount, x, y) {
+  const earned = amount * combo;
+  score += earned;
+  animateScore();
+  spawnFloatNum(earned, x, y);
+  updateLevel();
+}
+
+function animateScore() {
+  scoreEl.textContent = score.toLocaleString();
+  scoreEl.classList.remove('pop');
+  requestAnimationFrame(() => scoreEl.classList.add('pop'));
+  setTimeout(() => scoreEl.classList.remove('pop'), 120);
+}
+
+function updateLevel() {
+  let level = 1;
+  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
+    if (score >= LEVEL_THRESHOLDS[i - 1]) level = i;
+    else break;
+  }
+  const prevLevel = parseInt(levelNumEl.textContent);
+  levelNumEl.textContent = level;
+
+  // progress within current level
+  const lo = LEVEL_THRESHOLDS[level - 1];
+  const hi = LEVEL_THRESHOLDS[level];
+  const pct = hi === Infinity ? 99 : Math.min(99, ((score - lo) / (hi - lo)) * 100);
+  progressBar.style.width = pct + '%';
+
+  if (level > prevLevel) {
+    flashOverlay.classList.add('flash');
+    setTimeout(() => flashOverlay.classList.remove('flash'), 200);
+    playLevelUp();
+  }
+}
+
+/* ─── Combo system ───────────────────────────────────────── */
+function bumpCombo() {
+  combo = Math.min(combo + 1, 10);
+  clearTimeout(comboTimer);
+  comboTimer = setTimeout(resetCombo, 1800);
+  if (combo > 1) {
+    multiplierEl.textContent = `x${combo} COMBO`;
+    multiplierEl.style.opacity = '1';
+  }
+}
+function resetCombo() {
+  combo = 1;
+  multiplierEl.style.opacity = '0';
+}
+
+/* ─── Floating number ────────────────────────────────────── */
+function spawnFloatNum(n, x, y) {
+  const el = document.createElement('div');
+  el.className = 'float-num';
+  el.textContent = '+' + (n > 999 ? (n/1000).toFixed(1)+'k' : n);
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  if (combo >= 5) { el.style.color = '#f59e0b'; el.style.fontSize = '36px'; }
+  if (combo >= 10){ el.style.color = '#ef4444'; el.style.fontSize = '44px'; }
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+/* ─── Ripple ─────────────────────────────────────────────── */
+function spawnRipple(x, y, color = 'rgba(167,139,250,0.7)') {
+  const el = document.createElement('div');
+  el.className = 'ripple';
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  el.style.borderColor = color;
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+/* ─── Particles ──────────────────────────────────────────── */
+const COLORS = ['#a78bfa','#34d399','#f472b6','#fbbf24','#38bdf8','#fff'];
+function spawnParticles(x, y, count = 8) {
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'particle';
+    const angle = (Math.random() * Math.PI * 2);
+    const dist  = 40 + Math.random() * 80;
+    el.style.cssText = `
+      left: ${x}px; top: ${y}px;
+      background: ${COLORS[Math.floor(Math.random()*COLORS.length)]};
+      --tx: ${Math.cos(angle)*dist}px;
+      --ty: ${Math.sin(angle)*dist}px;
+      --dur: ${0.5 + Math.random()*0.4}s;
+      transform: translate(-50%,-50%);
+    `;
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+}
+
+/* ─── Orb click ──────────────────────────────────────────── */
+function handleOrbTap(x, y) {
+  bumpCombo();
+  addScore(1 + Math.floor(combo / 3), x, y);
+  spawnRipple(x, y);
+  spawnParticles(x, y, 6 + combo);
+  playClick(440 + combo * 30, 'sine', 0.1);
+}
+orbRing.addEventListener('click', (e) => handleOrbTap(e.clientX, e.clientY));
+// touchstart fires instantly (no 300ms delay) — suppress the subsequent click
+orbRing.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  handleOrbTap(t.clientX, t.clientY);
+}, { passive: false });
+
+/* ─── Bubble buttons ─────────────────────────────────────── */
+const bubbleColors = [
+  'rgba(244,114,182,0.7)',
+  'rgba(52,211,153,0.7)',
+  'rgba(251,191,36,0.7)',
+  'rgba(56,189,248,0.7)',
+];
+document.querySelectorAll('.bubble').forEach((btn, i) => {
+  function popBubble() {
+    const rect = btn.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top  + rect.height / 2;
+    bumpCombo();
+    addScore(2, cx, cy);
+    spawnRipple(cx, cy, bubbleColors[i]);
+    spawnParticles(cx, cy, 10);
+    btn.classList.remove('pop-anim');
+    requestAnimationFrame(() => btn.classList.add('pop-anim'));
+    btn.addEventListener('animationend', () => btn.classList.remove('pop-anim'), { once: true });
+    playClick(600 + i * 80, 'triangle', 0.1);
+  }
+  btn.addEventListener('click', popBubble);
+  btn.addEventListener('touchstart', (e) => { e.preventDefault(); popBubble(); }, { passive: false });
+});
+
+/* ─── Spinner ────────────────────────────────────────────── */
+function spinLoop() {
+  if (Math.abs(spinVelocity) < 0.1) { spinVelocity = 0; cancelAnimationFrame(spinAnimId); spinAnimId = null; return; }
+  spinAngle += spinVelocity;
+  spinVelocity *= 0.97;
+  spinnerEl.style.transform = `rotate(${spinAngle}deg)`;
+
+  // passive points from spinning
+  if (Math.abs(spinVelocity) > 2) {
+    spinnerEl._tickAccum = (spinnerEl._tickAccum || 0) + Math.abs(spinVelocity);
+    if (spinnerEl._tickAccum > 60) {
+      spinnerEl._tickAccum = 0;
+      const rect = spinnerWrap.getBoundingClientRect();
+      addScore(1, rect.left + rect.width/2, rect.top);
+    }
+  }
+  spinAnimId = requestAnimationFrame(spinLoop);
+}
+
+// Mouse drag
+let spinDragPrev = null;
+spinnerWrap.addEventListener('mousedown', (e) => {
+  isDraggingSpinner = true;
+  spinDragPrev = { x: e.clientX, y: e.clientY, t: Date.now() };
+  e.preventDefault();
+});
+window.addEventListener('mousemove', (e) => {
+  if (!isDraggingSpinner || !spinDragPrev) return;
+  const rect = spinnerWrap.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+  const prev = Math.atan2(spinDragPrev.y - cy, spinDragPrev.x - cx);
+  const curr = Math.atan2(e.clientY  - cy, e.clientX  - cx);
+  const dt = (Date.now() - spinDragPrev.t) || 1;
+  let delta = (curr - prev) * (180 / Math.PI);
+  if (delta >  180) delta -= 360;
+  if (delta < -180) delta += 360;
+  spinVelocity = delta * (16 / dt);
+  spinAngle += delta;
+  spinnerEl.style.transform = `rotate(${spinAngle}deg)`;
+  spinDragPrev = { x: e.clientX, y: e.clientY, t: Date.now() };
+  if (!spinAnimId) spinAnimId = requestAnimationFrame(spinLoop);
+});
+window.addEventListener('mouseup', () => { isDraggingSpinner = false; spinDragPrev = null; });
+
+// Touch drag
+let spinTouchPrev = null;
+spinnerWrap.addEventListener('touchstart', (e) => {
+  spinTouchPrev = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  e.preventDefault();
+}, { passive: false });
+spinnerWrap.addEventListener('touchmove', (e) => {
+  if (!spinTouchPrev) return;
+  const rect = spinnerWrap.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+  const touch = e.touches[0];
+  const prev = Math.atan2(spinTouchPrev.y - cy, spinTouchPrev.x - cx);
+  const curr = Math.atan2(touch.clientY - cy, touch.clientX - cx);
+  const dt = (Date.now() - spinTouchPrev.t) || 1;
+  let delta = (curr - prev) * (180 / Math.PI);
+  if (delta >  180) delta -= 360;
+  if (delta < -180) delta += 360;
+  spinVelocity = delta * (16 / dt);
+  spinAngle += delta;
+  spinnerEl.style.transform = `rotate(${spinAngle}deg)`;
+  spinTouchPrev = { x: touch.clientX, y: touch.clientY, t: Date.now() };
+  if (!spinAnimId) spinAnimId = requestAnimationFrame(spinLoop);
+  e.preventDefault();
+}, { passive: false });
+spinnerWrap.addEventListener('touchend', () => { spinTouchPrev = null; });
+
+/* ─── Idle orb sparkle ───────────────────────────────────── */
+setInterval(() => {
+  const rect = orb.getBoundingClientRect();
+  const angle = Math.random() * Math.PI * 2;
+  const r = rect.width / 2;
+  spawnParticles(
+    rect.left + r + Math.cos(angle) * r * 0.8,
+    rect.top  + r + Math.sin(angle) * r * 0.8,
+    1
+  );
+}, 600);
+
+/* ─── Prevent mobile scroll/bounce ──────────────────────── */
+document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
+/* ─── Keyboard shortcut ──────────────────────────────────── */
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'Enter') {
+    const rect = orb.getBoundingClientRect();
+    orbRing.click();
+  }
+});
+</script>
+</body>
+</html>
