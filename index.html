@@ -2,22 +2,30 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
 <title>Fidget Zone</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
 
   body {
     background: #0a0a0f;
     font-family: 'Segoe UI', sans-serif;
     overflow: hidden;
+    touch-action: none;
     width: 100vw;
-    height: 100vh;
+    /* Use dvh (dynamic viewport height) so mobile browser chrome doesn't cut off content */
+    height: 100dvh;
+    height: 100vh; /* fallback */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
   }
+  @supports (height: 100dvh) { body { height: 100dvh; } }
 
   /* ── Background aurora ── */
   .aurora {
@@ -82,6 +90,7 @@
     width: clamp(160px, 28vmin, 220px);
     height: clamp(160px, 28vmin, 220px);
     cursor: pointer;
+    touch-action: none;
   }
   .orb-ring::before, .orb-ring::after {
     content: '';
@@ -173,10 +182,11 @@
 
   /* ── Bubble buttons ── */
   .bubble {
-    width: 56px; height: 56px;
+    width: clamp(48px, 13vmin, 64px); height: clamp(48px, 13vmin, 64px);
     border-radius: 50%;
     border: none;
     cursor: pointer;
+    touch-action: none;
     position: relative;
     overflow: visible;
     transition: transform 0.08s ease;
@@ -203,9 +213,10 @@
   /* ── Spinner ── */
   .spinner-wrap {
     position: relative;
-    width: 56px;
-    height: 56px;
+    width: clamp(48px, 13vmin, 64px);
+    height: clamp(48px, 13vmin, 64px);
     cursor: grab;
+    touch-action: none;
   }
   .spinner-wrap:active { cursor: grabbing; }
   .spinner {
@@ -475,14 +486,20 @@ function spawnParticles(x, y, count = 8) {
 }
 
 /* ─── Orb click ──────────────────────────────────────────── */
-orbRing.addEventListener('click', (e) => {
-  const x = e.clientX, y = e.clientY;
+function handleOrbTap(x, y) {
   bumpCombo();
   addScore(1 + Math.floor(combo / 3), x, y);
   spawnRipple(x, y);
   spawnParticles(x, y, 6 + combo);
   playClick(440 + combo * 30, 'sine', 0.1);
-});
+}
+orbRing.addEventListener('click', (e) => handleOrbTap(e.clientX, e.clientY));
+// touchstart fires instantly (no 300ms delay) — suppress the subsequent click
+orbRing.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  handleOrbTap(t.clientX, t.clientY);
+}, { passive: false });
 
 /* ─── Bubble buttons ─────────────────────────────────────── */
 const bubbleColors = [
@@ -492,7 +509,7 @@ const bubbleColors = [
   'rgba(56,189,248,0.7)',
 ];
 document.querySelectorAll('.bubble').forEach((btn, i) => {
-  btn.addEventListener('click', (e) => {
+  function popBubble() {
     const rect = btn.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top  + rect.height / 2;
@@ -504,7 +521,9 @@ document.querySelectorAll('.bubble').forEach((btn, i) => {
     requestAnimationFrame(() => btn.classList.add('pop-anim'));
     btn.addEventListener('animationend', () => btn.classList.remove('pop-anim'), { once: true });
     playClick(600 + i * 80, 'triangle', 0.1);
-  });
+  }
+  btn.addEventListener('click', popBubble);
+  btn.addEventListener('touchstart', (e) => { e.preventDefault(); popBubble(); }, { passive: false });
 });
 
 /* ─── Spinner ────────────────────────────────────────────── */
@@ -588,6 +607,9 @@ setInterval(() => {
     1
   );
 }, 600);
+
+/* ─── Prevent mobile scroll/bounce ──────────────────────── */
+document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
 /* ─── Keyboard shortcut ──────────────────────────────────── */
 document.addEventListener('keydown', (e) => {
