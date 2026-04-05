@@ -17,9 +17,7 @@
     overflow: hidden;
     touch-action: none;
     width: 100vw;
-    /* Use dvh (dynamic viewport height) so mobile browser chrome doesn't cut off content */
-    height: 100dvh;
-    height: 100vh; /* fallback */
+    height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -27,44 +25,55 @@
   }
   @supports (height: 100dvh) { body { height: 100dvh; } }
 
-  /* ── Background aurora ── */
+  /* ── Aurora background ── */
   .aurora {
     position: fixed;
     inset: 0;
     pointer-events: none;
     overflow: hidden;
     z-index: 0;
+    transition: filter 1.2s ease;
   }
   .aurora-blob {
     position: absolute;
     border-radius: 50%;
     filter: blur(80px);
-    opacity: 0.18;
+    opacity: var(--aurora-opacity, 0.18);
+    transition: opacity 0.6s ease;
     animation: aurora-drift 12s ease-in-out infinite alternate;
   }
-  .aurora-blob:nth-child(1) { width: 500px; height: 500px; background: #7c3aed; top: -100px; left: -100px; animation-duration: 11s; }
-  .aurora-blob:nth-child(2) { width: 400px; height: 400px; background: #0ea5e9; bottom: -80px; right: -80px; animation-duration: 14s; animation-delay: -3s; }
-  .aurora-blob:nth-child(3) { width: 350px; height: 350px; background: #ec4899; top: 40%; left: 50%; transform: translate(-50%,-50%); animation-duration: 9s; animation-delay: -6s; }
+  .aurora-blob:nth-child(1) { width: 500px; height: 500px; background: #7c3aed; top: -100px; left: -100px; animation-duration: calc(11s / var(--aurora-speed, 1)); }
+  .aurora-blob:nth-child(2) { width: 400px; height: 400px; background: #0ea5e9; bottom: -80px; right: -80px; animation-duration: calc(14s / var(--aurora-speed, 1)); animation-delay: -3s; }
+  .aurora-blob:nth-child(3) { width: 350px; height: 350px; background: #ec4899; top: 40%; left: 50%; transform: translate(-50%,-50%); animation-duration: calc(9s / var(--aurora-speed, 1)); animation-delay: -6s; }
   @keyframes aurora-drift {
-    0% { transform: translate(0,0) scale(1); }
+    0%   { transform: translate(0, 0) scale(1); }
     100% { transform: translate(40px, 30px) scale(1.15); }
   }
 
   /* ── Layout ── */
-  .ui { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 24px; }
-
-  /* ── Score display ── */
-  .score-wrap {
+  .ui {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 24px;
   }
-  .score-label {
-    font-size: 13px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    color: #6b7280;
+  @keyframes screen-shake {
+    0%   { transform: translate(0, 0); }
+    15%  { transform: translate(-6px, -4px); }
+    30%  { transform: translate(5px, 5px); }
+    45%  { transform: translate(-4px, 3px); }
+    60%  { transform: translate(4px, -5px); }
+    75%  { transform: translate(-3px, 2px); }
+    90%  { transform: translate(2px, -2px); }
+    100% { transform: translate(0, 0); }
   }
+  .shake { animation: screen-shake 0.4s ease-out forwards !important; }
+
+  /* ── Score display ── */
+  .score-wrap { display: flex; flex-direction: column; align-items: center; }
+  .score-label { font-size: 13px; letter-spacing: 4px; text-transform: uppercase; color: #6b7280; }
   .score {
     font-size: clamp(52px, 10vw, 80px);
     font-weight: 900;
@@ -75,16 +84,9 @@
     font-variant-numeric: tabular-nums;
   }
   .score.pop { transform: scale(1.18); }
-  .multiplier {
-    font-size: 15px;
-    color: #f59e0b;
-    font-weight: 700;
-    letter-spacing: 2px;
-    min-height: 20px;
-    transition: opacity 0.3s;
-  }
+  .multiplier { font-size: 15px; color: #f59e0b; font-weight: 700; letter-spacing: 2px; min-height: 20px; transition: opacity 0.3s; }
 
-  /* ── Orb clicker ── */
+  /* ── Orb ── */
   .orb-ring {
     position: relative;
     width: clamp(160px, 28vmin, 220px);
@@ -95,38 +97,68 @@
   .orb-ring::before, .orb-ring::after {
     content: '';
     position: absolute;
-    inset: -6px;
     border-radius: 50%;
     border: 2px solid transparent;
-    animation: ring-spin 3s linear infinite;
   }
-  .orb-ring::before { border-top-color: #7c3aed; border-right-color: #7c3aed; animation-duration: 3s; }
-  .orb-ring::after  { border-bottom-color: #0ea5e9; border-left-color: #0ea5e9; animation-duration: 4.5s; animation-direction: reverse; inset: -14px; }
+  .orb-ring::before { inset: -6px;  border-top-color: var(--ring-c1, #7c3aed); border-right-color: var(--ring-c1, #7c3aed);  animation: ring-spin 3s linear infinite; }
+  .orb-ring::after  { inset: -14px; border-bottom-color: var(--ring-c2, #0ea5e9); border-left-color: var(--ring-c2, #0ea5e9); animation: ring-spin 4.5s linear infinite reverse; }
   @keyframes ring-spin { to { transform: rotate(360deg); } }
 
   .orb {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #a78bfa, #4c1d95 60%, #1e1b4b);
-    box-shadow:
-      0 0 40px rgba(124,58,237,0.5),
-      0 0 80px rgba(124,58,237,0.2),
-      inset 0 0 30px rgba(0,0,0,0.4);
+    background: radial-gradient(circle at 35% 35%, var(--orb-c1, #a78bfa), var(--orb-c2, #4c1d95) 60%, #1e1b4b);
+    box-shadow: 0 0 40px var(--orb-glow, rgba(124,58,237,0.5)), 0 0 80px var(--orb-glow, rgba(124,58,237,0.2)), inset 0 0 30px rgba(0,0,0,0.4);
     transition: transform 0.1s ease, box-shadow 0.1s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 48px;
-    animation: orb-breathe 3s ease-in-out infinite;
+    animation: orb-breathe var(--orb-pulse, 3s) ease-in-out infinite;
   }
   @keyframes orb-breathe {
-    0%, 100% { box-shadow: 0 0 40px rgba(124,58,237,0.5), 0 0 80px rgba(124,58,237,0.2), inset 0 0 30px rgba(0,0,0,0.4); }
-    50%       { box-shadow: 0 0 60px rgba(124,58,237,0.8), 0 0 120px rgba(124,58,237,0.4), inset 0 0 30px rgba(0,0,0,0.4); }
+    0%, 100% { box-shadow: 0 0 40px var(--orb-glow, rgba(124,58,237,0.5)), 0 0 80px var(--orb-glow, rgba(124,58,237,0.2)), inset 0 0 30px rgba(0,0,0,0.4); }
+    50%       { box-shadow: 0 0 60px var(--orb-glow, rgba(124,58,237,0.8)), 0 0 120px var(--orb-glow, rgba(124,58,237,0.4)), inset 0 0 30px rgba(0,0,0,0.4); }
   }
-  .orb-ring:active .orb { transform: scale(0.9); box-shadow: 0 0 20px rgba(124,58,237,0.3), inset 0 0 30px rgba(0,0,0,0.5); }
+  .orb-ring:active .orb { transform: scale(0.9); }
 
-  /* ── Ripple on click ── */
+  /* ── Progress bar ── */
+  .progress-wrap {
+    width: clamp(200px, 50vw, 340px);
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #7c3aed, #ec4899, #0ea5e9);
+    background-size: 200% 100%;
+    animation: bar-shimmer 2s linear infinite;
+    transition: width 0.2s ease;
+    width: 0%;
+  }
+  @keyframes bar-shimmer {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+  .level-badge { font-size: 12px; letter-spacing: 3px; color: #6b7280; text-transform: uppercase; }
+  .level-badge span { color: #a78bfa; font-weight: 700; }
+
+  /* ── Screen flash on level up ── */
+  .flash-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 200;
+    background: rgba(255,255,255,0);
+    transition: background 0.05s;
+  }
+  .flash-overlay.flash { background: rgba(255,255,255,0.18); }
+
+  /* ── Ripple ── */
   .ripple {
     position: fixed;
     border-radius: 50%;
@@ -158,12 +190,11 @@
     100% { opacity: 0; transform: translateX(-50%) translateY(-80px); }
   }
 
-  /* ── Particle burst ── */
+  /* ── Particles ── */
   .particle {
     position: fixed;
     width: 8px;
     height: 8px;
-    border-radius: 50%;
     pointer-events: none;
     z-index: 98;
     animation: particle-fly var(--dur) ease-out forwards;
@@ -173,127 +204,38 @@
     100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
   }
 
-  /* ── Bottom toy strip ── */
-  .toy-strip {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-  }
-
-  /* ── Bubble buttons ── */
-  .bubble {
-    width: clamp(48px, 13vmin, 64px); height: clamp(48px, 13vmin, 64px);
+  /* ── Floating tap bubbles ── */
+  .float-bubble {
+    position: fixed;
+    width: clamp(48px, 13vmin, 60px);
+    height: clamp(48px, 13vmin, 60px);
     border-radius: 50%;
-    border: none;
     cursor: pointer;
     touch-action: none;
-    position: relative;
-    overflow: visible;
-    transition: transform 0.08s ease;
-    animation: bubble-float 4s ease-in-out infinite;
+    z-index: 50;
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    animation: bubble-drift var(--drift-dur, 4s) ease-in-out infinite alternate;
+    transition: opacity 0.4s ease;
   }
-  .bubble:nth-child(1) { background: radial-gradient(circle at 35% 35%, #f472b6, #be185d); animation-delay: 0s; }
-  .bubble:nth-child(2) { background: radial-gradient(circle at 35% 35%, #34d399, #065f46); animation-delay: -1.3s; }
-  .bubble:nth-child(3) { background: radial-gradient(circle at 35% 35%, #fbbf24, #92400e); animation-delay: -2.6s; }
-  .bubble:nth-child(4) { background: radial-gradient(circle at 35% 35%, #38bdf8, #0c4a6e); animation-delay: -0.8s; }
-  @keyframes bubble-float {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    50%       { transform: translateY(-8px) rotate(3deg); }
+  @keyframes bubble-drift {
+    0%   { transform: translate(0, 0); }
+    100% { transform: translate(var(--dx, 12px), var(--dy, -10px)); }
   }
-  .bubble:active { transform: scale(0.78) !important; }
-  .bubble.pop-anim { animation: bubble-pop 0.35s ease-out forwards !important; }
-  @keyframes bubble-pop {
-    0%   { transform: scale(1); }
-    40%  { transform: scale(1.3); }
-    70%  { transform: scale(0.85); }
-    100% { transform: scale(1); }
-  }
-
-  /* ── Spinner ── */
-  .spinner-wrap {
-    position: relative;
-    width: clamp(48px, 13vmin, 64px);
-    height: clamp(48px, 13vmin, 64px);
-    cursor: grab;
-    touch-action: none;
-  }
-  .spinner-wrap:active { cursor: grabbing; }
-  .spinner {
-    width: 100%;
-    height: 100%;
-    animation: none;
-  }
-  .spinner-blade {
-    position: absolute;
-    width: 22px;
-    height: 22px;
-    border-radius: 50% 50% 50% 0;
-    top: 50%; left: 50%;
-    transform-origin: -4px -4px;
-  }
-  .spinner-blade:nth-child(1) { background: #7c3aed; transform: rotate(0deg)   translate(-50%,-50%); }
-  .spinner-blade:nth-child(2) { background: #0ea5e9; transform: rotate(120deg) translate(-50%,-50%); }
-  .spinner-blade:nth-child(3) { background: #ec4899; transform: rotate(240deg) translate(-50%,-50%); }
-  .spinner-center {
-    position: absolute;
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: #fff;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-    box-shadow: 0 0 10px rgba(255,255,255,0.6);
-  }
-
-  /* ── Progress bar ── */
-  .progress-wrap {
-    width: clamp(200px, 50vw, 340px);
-    height: 8px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 99px;
-    overflow: hidden;
-  }
-  .progress-bar {
-    height: 100%;
-    border-radius: 99px;
-    background: linear-gradient(90deg, #7c3aed, #ec4899, #0ea5e9);
-    background-size: 200% 100%;
-    animation: bar-shimmer 2s linear infinite;
-    transition: width 0.2s ease;
-    width: 0%;
-  }
-  @keyframes bar-shimmer {
-    0%   { background-position: 0% 50%; }
-    100% { background-position: 200% 50%; }
-  }
-
-  /* ── Level badge ── */
-  .level-badge {
-    font-size: 12px;
-    letter-spacing: 3px;
-    color: #6b7280;
-    text-transform: uppercase;
-  }
-  .level-badge span {
-    color: #a78bfa;
-    font-weight: 700;
-  }
-
-  /* ── Screen flash on level up ── */
-  .flash-overlay {
-    position: fixed;
-    inset: 0;
+  .float-bubble.popped {
+    animation: bubble-pop-out 0.3s ease-out forwards !important;
     pointer-events: none;
-    z-index: 200;
-    background: rgba(255,255,255,0);
-    transition: background 0.05s;
   }
-  .flash-overlay.flash { background: rgba(255,255,255,0.18); }
+  .float-bubble.expired { opacity: 0; pointer-events: none; }
+  @keyframes bubble-pop-out {
+    0%   { transform: scale(1); opacity: 1; }
+    40%  { transform: scale(1.5); opacity: 0.8; }
+    100% { transform: scale(0); opacity: 0; }
+  }
 </style>
 </head>
 <body>
 
-<div class="aurora">
+<div class="aurora" id="aurora">
   <div class="aurora-blob"></div>
   <div class="aurora-blob"></div>
   <div class="aurora-blob"></div>
@@ -301,15 +243,14 @@
 
 <div class="flash-overlay" id="flashOverlay"></div>
 
-<div class="ui">
-
+<div class="ui" id="ui">
   <div class="score-wrap">
     <div class="score-label">Points</div>
     <div class="score" id="score">0</div>
     <div class="multiplier" id="multiplier"></div>
   </div>
 
-  <div class="orb-ring" id="orbRing" title="Click me!">
+  <div class="orb-ring" id="orbRing">
     <div class="orb" id="orb">✦</div>
   </div>
 
@@ -317,307 +258,293 @@
     <div class="progress-bar" id="progressBar"></div>
   </div>
   <div class="level-badge">Level <span id="levelNum">1</span></div>
-
-  <div class="toy-strip">
-    <button class="bubble" id="b0" title="Pop!"></button>
-    <div class="spinner-wrap" id="spinnerWrap" title="Spin!">
-      <div class="spinner" id="spinner">
-        <div class="spinner-blade"></div>
-        <div class="spinner-blade"></div>
-        <div class="spinner-blade"></div>
-        <div class="spinner-center"></div>
-      </div>
-    </div>
-    <button class="bubble" id="b1" title="Pop!"></button>
-    <button class="bubble" id="b2" title="Pop!"></button>
-    <button class="bubble" id="b3" title="Pop!"></button>
-  </div>
-
 </div>
 
 <script>
-/* ─── State ─────────────────────────────────────────────── */
+/* ─── State ── */
 let score = 0;
 let combo = 1;
 let comboTimer = null;
-let spinVelocity = 0;
-let spinAngle   = 0;
-let spinAnimId  = null;
-let lastSpinTime = 0;
-let lastSpinAngle = 0;
-let isDraggingSpinner = false;
+let activeBubbles = 0;
 
 const LEVEL_THRESHOLDS = [0,50,150,350,700,1200,2000,3200,5000,8000,13000,21000,Infinity];
-const LEVEL_NAMES = ['Rookie','Clicker','Tapper','Spinner','Popper','Addict',
-                     'Machine','Wizard','Master','Legend','Deity','Cosmic'];
 
-/* ─── DOM refs ───────────────────────────────────────────── */
-const scoreEl     = document.getElementById('score');
-const multiplierEl= document.getElementById('multiplier');
-const orbRing     = document.getElementById('orbRing');
-const orb         = document.getElementById('orb');
-const progressBar = document.getElementById('progressBar');
-const levelNumEl  = document.getElementById('levelNum');
-const flashOverlay= document.getElementById('flashOverlay');
-const spinnerEl   = document.getElementById('spinner');
-const spinnerWrap = document.getElementById('spinnerWrap');
+/* ─── DOM ── */
+const scoreEl      = document.getElementById('score');
+const multiplierEl = document.getElementById('multiplier');
+const orbRing      = document.getElementById('orbRing');
+const orb          = document.getElementById('orb');
+const progressBar  = document.getElementById('progressBar');
+const levelNumEl   = document.getElementById('levelNum');
+const flashOverlay = document.getElementById('flashOverlay');
+const auroraEl     = document.getElementById('aurora');
+const uiEl         = document.getElementById('ui');
+const root         = document.documentElement;
 
-/* ─── Audio context ──────────────────────────────────────── */
+/* ─── Audio ── */
 let audioCtx = null;
 function getCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
 }
-function playClick(freq = 520, type = 'sine', vol = 0.12) {
+function playTone(freq, type, vol, decay) {
   try {
     const ctx = getCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, ctx.currentTime + 0.12);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, ctx.currentTime + decay);
     gain.gain.setValueAtTime(vol, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-    osc.start(); osc.stop(ctx.currentTime + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + decay);
+    osc.start(); osc.stop(ctx.currentTime + decay);
   } catch(_) {}
 }
-function playLevelUp() {
-  [523, 659, 784, 1047].forEach((f, i) => {
-    setTimeout(() => playClick(f, 'triangle', 0.15), i * 80);
-  });
-}
+function playClick(freq)  { playTone(freq, 'sine', 0.1, 0.15); }
+function playBubble(freq) { playTone(freq, 'triangle', 0.12, 0.18); }
+function playThud()       { playTone(80, 'sine', 0.2, 0.3); }
+function playLevelUp()    { [523,659,784,1047].forEach((f,i) => setTimeout(() => playTone(f,'triangle',0.15,0.2), i*80)); }
 
-/* ─── Score & Level ──────────────────────────────────────── */
+/* ─── Score & Level ── */
 function addScore(amount, x, y) {
   const earned = amount * combo;
   score += earned;
-  animateScore();
-  spawnFloatNum(earned, x, y);
-  updateLevel();
-}
-
-function animateScore() {
   scoreEl.textContent = score.toLocaleString();
   scoreEl.classList.remove('pop');
   requestAnimationFrame(() => scoreEl.classList.add('pop'));
   setTimeout(() => scoreEl.classList.remove('pop'), 120);
+  spawnFloatNum(earned, x, y);
+  updateLevel();
 }
 
 function updateLevel() {
   let level = 1;
   for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
-    if (score >= LEVEL_THRESHOLDS[i - 1]) level = i;
-    else break;
+    if (score >= LEVEL_THRESHOLDS[i - 1]) level = i; else break;
   }
-  const prevLevel = parseInt(levelNumEl.textContent);
+  const prev = parseInt(levelNumEl.textContent);
   levelNumEl.textContent = level;
-
-  // progress within current level
-  const lo = LEVEL_THRESHOLDS[level - 1];
-  const hi = LEVEL_THRESHOLDS[level];
-  const pct = hi === Infinity ? 99 : Math.min(99, ((score - lo) / (hi - lo)) * 100);
-  progressBar.style.width = pct + '%';
-
-  if (level > prevLevel) {
+  const lo = LEVEL_THRESHOLDS[level - 1], hi = LEVEL_THRESHOLDS[level];
+  progressBar.style.width = (hi === Infinity ? 99 : Math.min(99, ((score-lo)/(hi-lo))*100)) + '%';
+  if (level > prev) {
     flashOverlay.classList.add('flash');
     setTimeout(() => flashOverlay.classList.remove('flash'), 200);
     playLevelUp();
+    updateAuroraHue(level);
   }
 }
 
-/* ─── Combo system ───────────────────────────────────────── */
+/* ─── Combo ── */
 function bumpCombo() {
-  combo = Math.min(combo + 1, 10);
+  combo = Math.min(combo + 1, 100);
   clearTimeout(comboTimer);
   comboTimer = setTimeout(resetCombo, 1800);
-  if (combo > 1) {
-    multiplierEl.textContent = `x${combo} COMBO`;
-    multiplierEl.style.opacity = '1';
-  }
+  if (combo > 1) { multiplierEl.textContent = `x${combo} COMBO`; multiplierEl.style.opacity = '1'; }
+  updateOrbHeat(combo);
+  updateAuroraActivity(combo);
+  if (combo === 25 || combo === 50 || combo === 100) triggerShake();
 }
 function resetCombo() {
   combo = 1;
   multiplierEl.style.opacity = '0';
+  updateOrbHeat(1);
+  updateAuroraActivity(1);
 }
 
-/* ─── Floating number ────────────────────────────────────── */
-function spawnFloatNum(n, x, y) {
-  const el = document.createElement('div');
-  el.className = 'float-num';
-  el.textContent = '+' + (n > 999 ? (n/1000).toFixed(1)+'k' : n);
-  el.style.left = x + 'px';
-  el.style.top  = y + 'px';
-  if (combo >= 5) { el.style.color = '#f59e0b'; el.style.fontSize = '36px'; }
-  if (combo >= 10){ el.style.color = '#ef4444'; el.style.fontSize = '44px'; }
-  document.body.appendChild(el);
-  el.addEventListener('animationend', () => el.remove());
+/* ─── Orb heat (combo color) ── */
+// Color stops at 0%, 25%, 50%, 75%, 100% of combo range
+const HEAT_STOPS = [
+  { c1:'#a78bfa', c2:'#4c1d95', glowR:124, glowG:58,  glowB:237, r1:'#7c3aed', r2:'#0ea5e9' }, // cold  (1)
+  { c1:'#818cf8', c2:'#3730a3', glowR:99,  glowG:102, glowB:241, r1:'#6366f1', r2:'#38bdf8' }, // cool  (25)
+  { c1:'#fbbf24', c2:'#92400e', glowR:245, glowG:158, glowB:11,  r1:'#f59e0b', r2:'#fcd34d' }, // warm  (50)
+  { c1:'#fb923c', c2:'#7c2d12', glowR:234, glowG:88,  glowB:12,  r1:'#ea580c', r2:'#fed7aa' }, // hot   (75)
+  { c1:'#f87171', c2:'#7f1d1d', glowR:239, glowG:68,  glowB:68,  r1:'#ef4444', r2:'#fca5a5' }, // max  (100)
+];
+function updateOrbHeat(n) {
+  const t    = (n - 1) / 99;           // 0..1
+  const seg  = t * (HEAT_STOPS.length - 1);
+  const lo   = Math.floor(seg), hi = Math.min(lo + 1, HEAT_STOPS.length - 1);
+  const frac = seg - lo;
+  const a = HEAT_STOPS[lo], b = HEAT_STOPS[hi];
+  // Interpolate glow color numerically; snap hex stops (close enough visually)
+  const r = Math.round(a.glowR + (b.glowR - a.glowR) * frac);
+  const g = Math.round(a.glowG + (b.glowG - a.glowG) * frac);
+  const bv= Math.round(a.glowB + (b.glowB - a.glowB) * frac);
+  const glowAlpha = (0.5 + t * 0.3).toFixed(2);
+  const pulse = (3 - t * 2.5).toFixed(2) + 's'; // 3s → 0.5s
+  root.style.setProperty('--orb-c1',    frac < 0.5 ? a.c1 : b.c1);
+  root.style.setProperty('--orb-c2',    frac < 0.5 ? a.c2 : b.c2);
+  root.style.setProperty('--orb-glow',  `rgba(${r},${g},${bv},${glowAlpha})`);
+  root.style.setProperty('--ring-c1',   frac < 0.5 ? a.r1 : b.r1);
+  root.style.setProperty('--ring-c2',   frac < 0.5 ? a.r2 : b.r2);
+  root.style.setProperty('--orb-pulse', pulse);
 }
 
-/* ─── Ripple ─────────────────────────────────────────────── */
-function spawnRipple(x, y, color = 'rgba(167,139,250,0.7)') {
-  const el = document.createElement('div');
-  el.className = 'ripple';
-  el.style.left = x + 'px';
-  el.style.top  = y + 'px';
-  el.style.borderColor = color;
-  document.body.appendChild(el);
-  el.addEventListener('animationend', () => el.remove());
+/* ─── Aurora reactivity ── */
+function updateAuroraActivity(n) {
+  const t       = (n - 1) / 99;
+  const speed   = (1 + t * 2).toFixed(2);        // 1x → 3x
+  const opacity = (0.18 + t * 0.22).toFixed(3);  // 0.18 → 0.40
+  root.style.setProperty('--aurora-speed',   speed);
+  root.style.setProperty('--aurora-opacity', opacity);
+}
+function updateAuroraHue(level) {
+  const hue = Math.round((level - 1) * 27); // 0deg at L1, ~297deg at L12
+  auroraEl.style.filter = `hue-rotate(${hue}deg)`;
 }
 
-/* ─── Particles ──────────────────────────────────────────── */
+/* ─── Screen shake ── */
+function triggerShake() {
+  uiEl.classList.remove('shake');
+  requestAnimationFrame(() => uiEl.classList.add('shake'));
+  uiEl.addEventListener('animationend', () => uiEl.classList.remove('shake'), { once: true });
+  playThud();
+}
+
+/* ─── Particles ── */
 const COLORS = ['#a78bfa','#34d399','#f472b6','#fbbf24','#38bdf8','#fff'];
+const SHAPES = [
+  'border-radius:50%',                                                                                       // circle  60%
+  'border-radius:50%',
+  'border-radius:50%',
+  'border-radius:2px',                                                                                       // diamond 20%
+  'clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)',   // star    20%
+];
 function spawnParticles(x, y, count = 8) {
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
     el.className = 'particle';
-    const angle = (Math.random() * Math.PI * 2);
+    const angle = Math.random() * Math.PI * 2;
     const dist  = 40 + Math.random() * 80;
-    el.style.cssText = `
-      left: ${x}px; top: ${y}px;
-      background: ${COLORS[Math.floor(Math.random()*COLORS.length)]};
-      --tx: ${Math.cos(angle)*dist}px;
-      --ty: ${Math.sin(angle)*dist}px;
-      --dur: ${0.5 + Math.random()*0.4}s;
-      transform: translate(-50%,-50%);
-    `;
+    const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+    el.style.cssText = `left:${x}px;top:${y}px;background:${COLORS[Math.floor(Math.random()*COLORS.length)]};${shape};--tx:${Math.cos(angle)*dist}px;--ty:${Math.sin(angle)*dist}px;--dur:${0.5+Math.random()*0.4}s;transform:translate(-50%,-50%)`;
     document.body.appendChild(el);
     el.addEventListener('animationend', () => el.remove());
   }
 }
 
-/* ─── Orb click ──────────────────────────────────────────── */
-function handleOrbTap(x, y) {
+/* ─── Ripple ── */
+function spawnRipple(x, y, color = 'rgba(167,139,250,0.7)') {
+  const el = document.createElement('div');
+  el.className = 'ripple';
+  el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.borderColor = color;
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+/* ─── Float number ── */
+function spawnFloatNum(n, x, y) {
+  const el = document.createElement('div');
+  el.className = 'float-num';
+  el.textContent = '+' + (n > 999 ? (n/1000).toFixed(1)+'k' : n);
+  el.style.left = x + 'px'; el.style.top = y + 'px';
+  if (combo >= 5)  { el.style.color = '#f59e0b'; el.style.fontSize = '36px'; }
+  if (combo >= 10) { el.style.color = '#ef4444'; el.style.fontSize = '44px'; }
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+/* ─── Shared tap handler ── */
+function handleTap(x, y, points) {
   bumpCombo();
-  addScore(1 + Math.floor(combo / 3), x, y);
+  addScore(points, x, y);
   spawnRipple(x, y);
   spawnParticles(x, y, 6 + combo);
-  playClick(440 + combo * 30, 'sine', 0.1);
+  playClick(440 + combo * 30);
 }
-orbRing.addEventListener('click', (e) => handleOrbTap(e.clientX, e.clientY));
-// touchstart fires instantly (no 300ms delay) — suppress the subsequent click
+
+/* ─── Orb ── */
+orbRing.addEventListener('click', (e) => handleTap(e.clientX, e.clientY, 1));
 orbRing.addEventListener('touchstart', (e) => {
   e.preventDefault();
   const t = e.changedTouches[0];
-  handleOrbTap(t.clientX, t.clientY);
+  handleTap(t.clientX, t.clientY, 1);
 }, { passive: false });
 
-/* ─── Bubble buttons ─────────────────────────────────────── */
-const bubbleColors = [
+/* ─── Floating tap bubbles ── */
+const BUBBLE_GRADIENTS = [
+  'radial-gradient(circle at 35% 35%, #f472b6, #be185d)',
+  'radial-gradient(circle at 35% 35%, #34d399, #065f46)',
+  'radial-gradient(circle at 35% 35%, #fbbf24, #92400e)',
+  'radial-gradient(circle at 35% 35%, #38bdf8, #0c4a6e)',
+];
+const BUBBLE_RIPPLE_COLORS = [
   'rgba(244,114,182,0.7)',
   'rgba(52,211,153,0.7)',
   'rgba(251,191,36,0.7)',
   'rgba(56,189,248,0.7)',
 ];
-document.querySelectorAll('.bubble').forEach((btn, i) => {
-  function popBubble() {
-    const rect = btn.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top  + rect.height / 2;
+let bubbleColorIdx = 0;
+
+function spawnFloatingBubble() {
+  if (activeBubbles >= 5) return;
+  activeBubbles++;
+
+  const size   = Math.max(48, Math.min(60, window.innerWidth * 0.13));
+  const margin = size + 20;
+  const x = margin + Math.random() * (window.innerWidth  - margin * 2);
+  const y = margin + Math.random() * (window.innerHeight - margin * 2);
+
+  const idx = bubbleColorIdx++ % BUBBLE_GRADIENTS.length;
+  const el  = document.createElement('div');
+  el.className = 'float-bubble';
+  el.style.cssText = `
+    left: ${x - size/2}px;
+    top:  ${y - size/2}px;
+    background: ${BUBBLE_GRADIENTS[idx]};
+    --dx: ${(Math.random()-0.5)*28}px;
+    --dy: ${(Math.random()-0.5)*28}px;
+    --drift-dur: ${2.5 + Math.random()*2}s;
+  `;
+  document.body.appendChild(el);
+
+  function popIt(cx, cy) {
+    if (el._done) return;
+    el._done = true;
+    clearTimeout(el._expireTimer);
+    activeBubbles--;
+    el.classList.add('popped');
+    spawnRipple(cx, cy, BUBBLE_RIPPLE_COLORS[idx]);
+    spawnParticles(cx, cy, 12 + combo);
+    playBubble(600 + idx * 80);
     bumpCombo();
-    addScore(2, cx, cy);
-    spawnRipple(cx, cy, bubbleColors[i]);
-    spawnParticles(cx, cy, 10);
-    btn.classList.remove('pop-anim');
-    requestAnimationFrame(() => btn.classList.add('pop-anim'));
-    btn.addEventListener('animationend', () => btn.classList.remove('pop-anim'), { once: true });
-    playClick(600 + i * 80, 'triangle', 0.1);
+    addScore(5, cx, cy);
+    el.addEventListener('animationend', () => el.remove(), { once: true });
   }
-  btn.addEventListener('click', popBubble);
-  btn.addEventListener('touchstart', (e) => { e.preventDefault(); popBubble(); }, { passive: false });
-});
 
-/* ─── Spinner ────────────────────────────────────────────── */
-function spinLoop() {
-  if (Math.abs(spinVelocity) < 0.1) { spinVelocity = 0; cancelAnimationFrame(spinAnimId); spinAnimId = null; return; }
-  spinAngle += spinVelocity;
-  spinVelocity *= 0.97;
-  spinnerEl.style.transform = `rotate(${spinAngle}deg)`;
+  el.addEventListener('click', (e) => popIt(e.clientX, e.clientY));
+  el.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    popIt(t.clientX, t.clientY);
+  }, { passive: false });
 
-  // passive points from spinning
-  if (Math.abs(spinVelocity) > 2) {
-    spinnerEl._tickAccum = (spinnerEl._tickAccum || 0) + Math.abs(spinVelocity);
-    if (spinnerEl._tickAccum > 60) {
-      spinnerEl._tickAccum = 0;
-      const rect = spinnerWrap.getBoundingClientRect();
-      addScore(1, rect.left + rect.width/2, rect.top);
-    }
-  }
-  spinAnimId = requestAnimationFrame(spinLoop);
+  // Expire if not tapped
+  const lifetime = 3000 + Math.random() * 2000;
+  el._expireTimer = setTimeout(() => {
+    if (el._done) return;
+    el._done = true;
+    activeBubbles--;
+    el.classList.add('expired');
+    setTimeout(() => el.remove(), 400);
+  }, lifetime);
+
+  // Schedule next
+  scheduleNextBubble();
 }
 
-// Mouse drag
-let spinDragPrev = null;
-spinnerWrap.addEventListener('mousedown', (e) => {
-  isDraggingSpinner = true;
-  spinDragPrev = { x: e.clientX, y: e.clientY, t: Date.now() };
-  e.preventDefault();
-});
-window.addEventListener('mousemove', (e) => {
-  if (!isDraggingSpinner || !spinDragPrev) return;
-  const rect = spinnerWrap.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-  const prev = Math.atan2(spinDragPrev.y - cy, spinDragPrev.x - cx);
-  const curr = Math.atan2(e.clientY  - cy, e.clientX  - cx);
-  const dt = (Date.now() - spinDragPrev.t) || 1;
-  let delta = (curr - prev) * (180 / Math.PI);
-  if (delta >  180) delta -= 360;
-  if (delta < -180) delta += 360;
-  spinVelocity = delta * (16 / dt);
-  spinAngle += delta;
-  spinnerEl.style.transform = `rotate(${spinAngle}deg)`;
-  spinDragPrev = { x: e.clientX, y: e.clientY, t: Date.now() };
-  if (!spinAnimId) spinAnimId = requestAnimationFrame(spinLoop);
-});
-window.addEventListener('mouseup', () => { isDraggingSpinner = false; spinDragPrev = null; });
+function scheduleNextBubble() {
+  setTimeout(spawnFloatingBubble, 1500 + Math.random() * 1500);
+}
 
-// Touch drag
-let spinTouchPrev = null;
-spinnerWrap.addEventListener('touchstart', (e) => {
-  spinTouchPrev = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
-  e.preventDefault();
-}, { passive: false });
-spinnerWrap.addEventListener('touchmove', (e) => {
-  if (!spinTouchPrev) return;
-  const rect = spinnerWrap.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-  const touch = e.touches[0];
-  const prev = Math.atan2(spinTouchPrev.y - cy, spinTouchPrev.x - cx);
-  const curr = Math.atan2(touch.clientY - cy, touch.clientX - cx);
-  const dt = (Date.now() - spinTouchPrev.t) || 1;
-  let delta = (curr - prev) * (180 / Math.PI);
-  if (delta >  180) delta -= 360;
-  if (delta < -180) delta += 360;
-  spinVelocity = delta * (16 / dt);
-  spinAngle += delta;
-  spinnerEl.style.transform = `rotate(${spinAngle}deg)`;
-  spinTouchPrev = { x: touch.clientX, y: touch.clientY, t: Date.now() };
-  if (!spinAnimId) spinAnimId = requestAnimationFrame(spinLoop);
-  e.preventDefault();
-}, { passive: false });
-spinnerWrap.addEventListener('touchend', () => { spinTouchPrev = null; });
-
-/* ─── Idle orb sparkle ───────────────────────────────────── */
-setInterval(() => {
-  const rect = orb.getBoundingClientRect();
-  const angle = Math.random() * Math.PI * 2;
-  const r = rect.width / 2;
-  spawnParticles(
-    rect.left + r + Math.cos(angle) * r * 0.8,
-    rect.top  + r + Math.sin(angle) * r * 0.8,
-    1
-  );
-}, 600);
-
-/* ─── Prevent mobile scroll/bounce ──────────────────────── */
+/* ─── Prevent mobile scroll ── */
 document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
-/* ─── Keyboard shortcut ──────────────────────────────────── */
-document.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' || e.code === 'Enter') {
-    const rect = orb.getBoundingClientRect();
-    orbRing.click();
-  }
-});
+/* ─── Boot ── */
+updateOrbHeat(1);
+updateAuroraActivity(1);
+scheduleNextBubble();
 </script>
 </body>
 </html>
